@@ -9,16 +9,15 @@ from sets import Set
 from parse_output import OutputParser
 
 class Pipeline(object):
-    
+    # these defaults are from the example Nathan gave me
+    defaults={'FIND':9,'DSUL':7,'MIND':-3.5,'NTRY':100} 
+    possible_params=Set({'FIND','DSUL','MIND','NTRY','SPAG','SAD','CELL'})
 
     def __init__(self):
         self.parser=OutputParser()
-        self.defaults = {'FIND':9,'DSUL':7,'MIND':-3.5,'NTRY':100}
         self.input_params=self.defaults
         self.name=''
         self.outfile=''
-        self.possible_params=Set({'FIND','DSUL','MIND','NTRY','SPAG','SAD','CELL'})
-        self.parser=OutputParser()
 
     def process_args(self,cell,spag,sad,**kwargs):
         self.outfile=kwargs.get('outfile',"shelx_pipeline.out")
@@ -50,9 +49,10 @@ class Pipeline(object):
             (sout,serr)=p.communicate(instring)
                 # print sout
             # at the moment we're just printing out the output, but we want to capture it and parse it
-            #self.parser.read(sout)
-            p2=Popen(["tee",self.outfile],stdin=PIPE)
-            p2.communicate(sout) 
+            self.parser.read(sout)
+            self.parser.parse_shelxc_out()
+           # p2=Popen(["tee",self.outfile],stdin=PIPE)
+           # p2.communicate(sout) 
         except:
             print "an error occured"
             traceback.print_exc()
@@ -66,9 +66,6 @@ class Pipeline(object):
     
 
     def call_shelxe(self,*args,**kwargs):
-        # args for shelxe given by my example here -h means heavy atoms in native data
-        # -s0.5 means solvent fraction
-        # -mN - N iterations of density modification per global cycle [-m20]
         infilename=self.name+'_fa'
         shelxe_flags=kwargs.get('shelxe_flags',[])
         shelxe_args=['shelxe',self.name,infilename]
@@ -94,8 +91,8 @@ class Pipeline(object):
             self.process_args(cell,spag,sad,**kwargs)
             self.call_shelxc(*args,**kwargs)
             self.call_shelxd(*args,**kwargs)
-            self.call_shelxe("-h",*args,**kwargs)
-            self.call_shelxe("-h",invert=True,*args,**kwargs)
+            self.call_shelxe(*args,**kwargs)
+            self.call_shelxe(invert=True,*args,**kwargs)
         except:
             print "something bad happened"
             print  traceback.print_exc(file=sys.stdout)
@@ -113,7 +110,7 @@ def main():
     argsdict['outfile']="pipeline_output"
     pipeline=Pipeline()
     logging.info('Starting for run '+argsdict['name'])
-    shelxe_flags=["-s0.5", "-m20"]
+    shelxe_flags=["-h","-s0.5", "-m20"]
     # you can call it like this with the 4 compulsory positional args and the extra kwargs
     pipeline.run(argsdict['name'],argsdict['CELL'],argsdict['SPAG'],argsdict['SAD'],FIND=9,DSUL=8,shelxe_flags=shelxe_flags)
 
